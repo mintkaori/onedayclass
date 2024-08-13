@@ -1,13 +1,16 @@
 import streamlit as st
 from langchain_core.messages.chat import ChatMessage
 from langchain_openai import ChatOpenAI
+from langchain_teddynote import logging
 from langchain_teddynote.models import MultiModal
 
 from dotenv import load_dotenv
 import os
 
+
 # API KEY 정보로드
-# load_dotenv()
+#load_dotenv()
+
 
 # 캐시 디렉토리 생성
 if not os.path.exists(".cache"):
@@ -26,6 +29,10 @@ st.title("수학 교과서 채점 봇 💬")
 if "messages" not in st.session_state:
     # 대화기록을 저장하기 위한 용도로 생성한다.
     st.session_state["messages"] = []
+
+# 탭을 생성
+main_tab1, main_tab2 = st.tabs(["이미지", "대화내용"])
+
 
 # 사이드바 생성
 with st.sidebar:
@@ -49,7 +56,7 @@ with st.sidebar:
 # 이전 대화를 출력
 def print_messages():
     for chat_message in st.session_state["messages"]:
-        st.chat_message(chat_message.role).write(chat_message.content)
+        main_tab2.chat_message(chat_message.role).write(chat_message.content)
 
 
 # 새로운 메시지를 추가
@@ -91,55 +98,47 @@ def generate_answer(image_filepath, system_prompt, user_prompt, model_name="gpt-
 if clear_btn:
     st.session_state["messages"] = []
 
-# 페이지 레이아웃을 두 열로 나누기
-col1, col2 = st.columns([1, 2])
+# 이전 대화 기록 출력
+print_messages()
 
-# 왼쪽 열에 이미지 표시
-with col1:
+# 사용자의 입력
+user_input = st.chat_input("궁금한 내용을 물어보세요!")
+
+# 경고 메시지를 띄우기 위한 빈 영역
+warning_msg = main_tab2.empty()
+
+# 이미지가 업로드가 된다면...
+if uploaded_file:
+    # 이미지 파일을 처리
+    image_filepath = process_imagefile(uploaded_file)
+    main_tab1.image(image_filepath)
+
+# 만약에 사용자 입력이 들어오면...
+if user_input:
+    # 파일이 업로드 되었는지 확인
     if uploaded_file:
         # 이미지 파일을 처리
         image_filepath = process_imagefile(uploaded_file)
-        st.image(image_filepath, use_column_width=True)
+        # 답변 요청
+        response = generate_answer(
+            image_filepath, system_prompt, user_input, selected_model
+        )
+
+        # 사용자의 입력
+        main_tab2.chat_message("user").write(user_input)
+
+        with main_tab2.chat_message("assistant"):
+            # 빈 공간(컨테이너)을 만들어서, 여기에 토큰을 스트리밍 출력한다.
+            container = st.empty()
+
+            ai_answer = ""
+            for token in response:
+                ai_answer += token.content
+                container.markdown(ai_answer)
+
+        # 대화기록을 저장한다.
+        add_message("user", user_input)
+        add_message("assistant", ai_answer)
     else:
-        st.write("이미지를 업로드 해주세요.")
-
-# 오른쪽 열에 대화내용 표시 및 입력
-with col2:
-    # 이전 대화 기록 출력
-    print_messages()
-
-    # 사용자의 입력
-    user_input = st.chat_input("궁금한 내용을 물어보세요!")
-
-    # 경고 메시지를 띄우기 위한 빈 영역
-    warning_msg = st.empty()
-
-    # 만약에 사용자 입력이 들어오면...
-    if user_input:
-        # 파일이 업로드 되었는지 확인
-        if uploaded_file:
-            # 이미지 파일을 처리
-            image_filepath = process_imagefile(uploaded_file)
-            # 답변 요청
-            response = generate_answer(
-                image_filepath, system_prompt, user_input, selected_model
-            )
-
-            # 사용자의 입력
-            st.chat_message("user").write(user_input)
-
-            with st.chat_message("assistant"):
-                # 빈 공간(컨테이너)을 만들어서, 여기에 토큰을 스트리밍 출력한다.
-                container = st.empty()
-
-                ai_answer = ""
-                for token in response:
-                    ai_answer += token.content
-                    container.markdown(ai_answer)
-
-            # 대화기록을 저장한다.
-            add_message("user", user_input)
-            add_message("assistant", ai_answer)
-        else:
-            # 이미지를 업로드 하라는 경고 메시지 출력
-            warning_msg.error("이미지를 업로드 해주세요.")
+        # 이미지를 업로드 하라는 경고 메시지 출력
+        warning_msg.error("이미지를 업로드 해주세요.")
