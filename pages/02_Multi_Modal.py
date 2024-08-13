@@ -24,6 +24,7 @@ st.title("수학 교과서 채점 봇 💬")
 
 # 처음 1번만 실행하기 위한 코드
 if "messages" not in st.session_state:
+    # 대화기록을 저장하기 위한 용도로 생성한다.
     st.session_state["messages"] = []
 
 if "uploaded_files" not in st.session_state:
@@ -76,7 +77,7 @@ def generate_answer(image_filepath, system_prompt, model_name="gpt-4o"):
     # 멀티모달 객체 생성
     multimodal = MultiModal(llm, system_prompt=system_prompt, user_prompt="")
 
-    # 이미지 파일로부터 질의(스트림 방식)
+    # 이미지 파일로 부터 질의(스트림 방식)
     answer = multimodal.stream(image_filepath)
     return answer
 
@@ -91,14 +92,27 @@ col1, col2 = st.columns([1, 2])
 # 왼쪽 열에 이미지 표시
 with col1:
     if uploaded_files:
+        st.session_state["uploaded_files"] = []  # Clear previous images
         for uploaded_file in uploaded_files:
-            if uploaded_file not in st.session_state["uploaded_files"]:
-                # 이미지 파일을 처리
-                image_filepath = process_imagefile(uploaded_file)
-                st.image(image_filepath, use_column_width=True)
+            # 이미지 파일을 처리
+            image_filepath = process_imagefile(uploaded_file)
+            st.image(image_filepath, use_column_width=True)
+            st.session_state["uploaded_files"].append(image_filepath)
+            # 답변 요청
+            response = generate_answer(image_filepath, system_prompt, selected_model)
+            
+            # 대화 기록에 추가
+            st.session_state["messages"].append(ChatMessage(role="user", content="이미지를 업로드하셨습니다."))
 
-                # 답변 요청
-                response = generate_answer(image_filepath, system_prompt, selected_model)
-                
-                # 대화 기록에 추가
-                st.session_state["messages"].append(ChatMessage(role="user", content="이미지를 업로드하셨
+            ai_answer = ""
+            for token in response:
+                ai_answer += token.content
+
+            st.session_state["messages"].append(ChatMessage(role="assistant", content=ai_answer))
+    else:
+        st.write("이미지를 업로드 해주세요.")
+
+# 오른쪽 열에 대화내용 표시
+with col2:
+    # 이전 대화 기록 출력
+    print_messages()
