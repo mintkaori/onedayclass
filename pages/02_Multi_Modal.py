@@ -23,7 +23,7 @@ if not os.path.exists(".cache/files"):
 if not os.path.exists(".cache/embeddings"):
     os.mkdir(".cache/embeddings")
 
-st.title("이미지 인식 기반 챗봇 💬")
+st.title("수학 교과서 채점 봇 💬")
 
 # 처음 1번만 실행하기 위한 코드
 if "messages" not in st.session_state:
@@ -48,7 +48,7 @@ with st.sidebar:
     # 시스템 프롬프트 추가
     system_prompt = st.text_area(
         "시스템 프롬프트",
-        "당신은 표(재무제표) 를 해석하는 금융 AI 어시스턴트 입니다.\n당신의 임무는 주어진 테이블 형식의 재무제표를 바탕으로 흥미로운 사실을 정리하여 친절하게 답변하는 것입니다.",
+        "당신은 초등학교 수학 선생님입니다. 사진을 업로드하면 파란색 선으로 10개씩 잘 묶었는지 확인하고 잘 묶었다면 10개씩 잘 묶었다고 칭찬해주세요.",
         height=200,
     )
 
